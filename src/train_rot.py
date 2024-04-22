@@ -6,7 +6,6 @@
 #### importing necessary modules and libraries
 from torch.utils.data import Dataset
 from dotenv import load_dotenv
-from datasets import load_metric
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -29,7 +28,7 @@ from model.model import *
 import pickle
 from data import *
 import warnings
-from metrics import compute_metrics
+from metrics import *
 from getTransformations import *
 
 ''' set random seeds '''
