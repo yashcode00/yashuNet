@@ -37,7 +37,7 @@ class Histology(Dataset):
                 augmentations = self.transform(image=image, mask=mask)
                 image = augmentations['image']
                 mask = augmentations['mask']
-                return image, mask.unsqueeze(0)
+                return image, mask
             else:
                 augmentations = self.transform(image=image)
                 image = augmentations['image']

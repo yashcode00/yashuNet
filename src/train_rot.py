@@ -66,10 +66,10 @@ class ImageSegmenter:
         self.model = self.load_model(self.load_path)
 
         # self.loss = torch.nn.CrossEntropyLoss(reduction='mean')
-        self.optimizer = optim.SGD(filter(lambda p: p.requires_grad, self.model.module.parameters()), lr=config.lr1, momentum = 0.9)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=config.lr1)
         self.loss_fn = nn.CrossEntropyLoss()
+        self.scaler = torch.cuda.amp.GradScaler()
 
-        self.bestLoss = 10000000000.0
 
         ### making directorues to save checkpoints, evaluations etc
         ### making output save folders 
@@ -123,6 +123,9 @@ class ImageSegmenter:
         return model
 
     def run_epoch(self, epoch: int):
+        total_loss = 0.0
+        total_correct = 0
+        total_samples = 0
         if self.gpu_id == 0:
             logging.info(f"Epoch: {epoch}")
         for phase in ['train', 'val']:
@@ -151,24 +154,29 @@ class ImageSegmenter:
                         loss = self.loss_fn(preds, targets)
                 elif phase=="train":
                     # backward + optimize only if in training phase
-                    self.optimizer.zero_grad()  # Zero gradients
                     preds = self.model.module.forward(images)
                     loss = self.loss_fn(preds, targets)
-                    # with torch.autograd.detect_anomaly():
-                    loss.backward()
-                    self.optimizer.step()
+                    self.optimizer.zero_grad()  # Zero gradients
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
 
                 running_loss += loss.item()
+                 # update loss and accuracy
+                _, predicted = preds.max(1)
+                total_correct += (predicted == targets).sum().item()
+                total_samples += preds.size(0)
             
             # metrics = self.calculate_scores(pred, gts, phase)
             metrics = {}
-
+            accuracy = total_correct / total_samples
             # Calculate mean loss after the epoch
             if phase == 'train':
                 mean_loss = running_loss / len(self.train_dl)
             else:
                 mean_loss = running_loss / len(self.val_dl)
             metrics[f"{phase}_loss"]  = mean_loss
+            metrics[f"{phase}_accuracy"] = accuracy
 
             # update tqdm loop
             batch_iterator.set_postfix(loss=mean_loss)
@@ -197,15 +205,6 @@ class ImageSegmenter:
         for epoch in range(self.n_epochs):
                 self.run_epoch(epoch)
                 if self.gpu_id == 0:
-                    ## evaluate metric on val
-                    metrics = compute_metric(self.val_dl, self.model.module, True)
-                     ## send the metrics to wancdb
-                    try:
-                        # Log metrics to WandB for this epoch
-                        wandb.log(metrics)
-
-                    except Exception as err:
-                        logging.error("Not able to log to wandb, ", err)
                     # saving the model
                     self.save_model(epoch)
         logging.info("Training complete")

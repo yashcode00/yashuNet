@@ -19,7 +19,7 @@ class ModelConfig:
         self.paths["unlabelled"]["val"] = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/datasets/HistologyNet/unlabelled/val_image"
 
         self.n_epochs_supervised = 500
-        self.n_epochs_unsupervised = 2 
+        self.n_epochs_unsupervised = 500 
 
         self.stats = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) ### remove this later or change this
         self.IMAGE_HEIGHT = 256

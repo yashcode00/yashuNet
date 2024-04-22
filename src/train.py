@@ -63,18 +63,20 @@ class ImageSegmenter:
 
         ## intializing all the models now
         ## load from chekp path
-        self.load_path = config.preload
+        self.load_path = config.preload2
         self.model = self.load_model(self.load_path)
 
-        # self.loss = torch.nn.CrossEntropyLoss(reduction='mean')
-        self.optimizer = optim.SGD(filter(lambda p: p.requires_grad, self.model.module.parameters()), lr=config.lr2, momentum = 0.9)
+        # self.loss = torch.nn.CrossEntropyLoss(reduction='mean') ## why the fuck the scaler does wonders in convergence
+        self.optimizer = optim.Adam(self.model.parameters(), lr=config.lr1)
         self.loss_fn = nn.BCEWithLogitsLoss()
+        self.scaler = torch.cuda.amp.GradScaler()
+
 
         self.bestLoss = 10000000000.0
 
         ### making directorues to save checkpoints, evaluations etc
         ### making output save folders 
-        if self.gpu_id == 0:
+        if self.gpu_id == 0: 
             self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self.wandb_run_name = f"HistologySegmentation_{self.timestamp}"
             self.save_model_path = f"HistologySegmentation_{self.timestamp}"
@@ -147,7 +149,7 @@ class ImageSegmenter:
 
             for images, targets  in batch_iterator:
                 images = images.to(self.gpu_id)
-                targets = targets.to(self.gpu_id)
+                targets = targets.float().unsqueeze(1).to(self.gpu_id)
 
                 if phase == "val":
                     with torch.no_grad():
@@ -155,12 +157,13 @@ class ImageSegmenter:
                         loss = self.loss_fn(preds, targets)
                 elif phase=="train":
                     # backward + optimize only if in training phase
-                    self.optimizer.zero_grad()  # Zero gradients
                     preds = self.model.module.forward(images)
                     loss = self.loss_fn(preds, targets)
+                    self.optimizer.zero_grad()  # Zero gradients
+                    self.scaler.scale(loss).backward()
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
                     # with torch.autograd.detect_anomaly():
-                    loss.backward()
-                    self.optimizer.step()
 
                 running_loss += loss.item()
             
@@ -192,12 +195,12 @@ class ImageSegmenter:
 
 
     def train(self):
-        logging.info("Starting the self-supervised training!")
+        logging.info("Starting the main segmentn training!")
         logging.info("*"*100)
 
 
         for epoch in range(self.n_epochs):
-                # self.run_epoch(epoch)
+                self.run_epoch(epoch)
                 if self.gpu_id == 0:
                     plot(self.model.module, self.val_dl, self.eval_path, f"{str(epoch)}.png")
                     ## evaluate metric on val

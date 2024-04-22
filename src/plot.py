@@ -25,7 +25,7 @@ def testPlot(images, ground_truth_masks, predicted_masks, dir, name):
     - ground_truth_masks (list of numpy arrays or tensors): List of ground truth masks.
     - predicted_masks (list of numpy arrays or tensors): List of predicted masks.
     """
-    num_images = images.shape[0]
+    num_images = len(images)
     stats = config.stats
 
     fig, axes = plt.subplots(num_images, 3, figsize=(15, 5*num_images))
@@ -70,9 +70,9 @@ def plot(model, val_dl, dir, name, n=20):
             prd.extend(preds.cpu())  # Collect predictions
         
         if len(img) >= n:
-            img = np.array(img[:n])
-            gt = np.array(gt[:n])
-            prd = np.array(prd[:n])
+            img = img[:n]
+            gt = gt[:n]
+            prd = prd[:n]
         break
 
     testPlot(img, gt, prd, dir, name)
