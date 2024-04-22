@@ -175,6 +175,8 @@ class ImageSegmenter:
 
             # Print combined training and validation stats
             if self.gpu_id == 0:
+                if phase == "train":
+                    metrics["epoch"] = epoch
                 ## send the metrics to wancdb
                 try:
                     # Log metrics to WandB for this epoch
@@ -196,7 +198,7 @@ class ImageSegmenter:
                 self.run_epoch(epoch)
                 if self.gpu_id == 0:
                     ## evaluate metric on val
-                    metrics = compute_metrics(self.val_dl, self.model.module)
+                    metrics = compute_metric(self.val_dl, self.model.module, True)
                      ## send the metrics to wancdb
                     try:
                         # Log metrics to WandB for this epoch
@@ -215,8 +217,8 @@ class ImageSegmenter:
 def prepare_dataloader(dataset: Dataset):
     return DataLoader_ROT(
         dataset,
-        drop_last=False,
-        batch_size=config.batch_size,
+        # drop_last=False,
+        batch_size=config.batch_size_selfSupervised,
         shuffle=False,
         sampler=DistributedSampler(dataset, shuffle=True)
     )

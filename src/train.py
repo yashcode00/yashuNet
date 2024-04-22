@@ -28,7 +28,7 @@ from model.model import *
 import pickle
 from data import *
 import warnings
-from metrics import compute_metrics
+from metrics import *
 from getTransformations import *
 from plot import plot
 
@@ -113,7 +113,6 @@ class ImageSegmenter:
         logging.info(f"Snapshot checkpointed successfully at location {self.pth_path} with number {epoch%15}")
     
     def load_model(self, path :str):
-        assert path is not None
         model = UNet(3,1).to(self.gpu_id)
         model = DDP(model, device_ids=[self.gpu_id])
 
@@ -122,6 +121,8 @@ class ImageSegmenter:
             u, v = model.module.load_state_dict(snapshot["model"], strict=False)
             logging.info(f"Missing keys: {u} \n Extra keys: {v}")
             logging.info("Models loaded successfully from the saved path.")
+        else:
+            logging.warn("Training model from scratch!")
 
         return model
 
@@ -140,9 +141,9 @@ class ImageSegmenter:
 
             if phase == 'train':
                 # Disable tqdm on all nodes except the rank 0 GPU on each server
-                batch_iterator = tqdm(self.train_dl(), desc=f"Processing Train: Epoch {epoch} on local rank: {self.local_rank}", disable=self.gpu_id != 0)
+                batch_iterator = tqdm(self.train_dl, desc=f"Processing Train: Epoch {epoch} on local rank: {self.local_rank}", disable=self.gpu_id != 0)
             else:
-                batch_iterator = tqdm(self.val_dl(), desc=f"Processing Val: Epoch {epoch} on local rank: {self.local_rank}", disable=self.gpu_id != 0)
+                batch_iterator = tqdm(self.val_dl, desc=f"Processing Val: Epoch {epoch} on local rank: {self.local_rank}", disable=self.gpu_id != 0)
 
             for images, targets  in batch_iterator:
                 images = images.to(self.gpu_id)
@@ -196,11 +197,11 @@ class ImageSegmenter:
 
 
         for epoch in range(self.n_epochs):
-                self.run_epoch(epoch)
+                # self.run_epoch(epoch)
                 if self.gpu_id == 0:
-                    plot(self.model.module, self.val_dl, self.eval_path, f"{str(epoch)}.png"})
+                    plot(self.model.module, self.val_dl, self.eval_path, f"{str(epoch)}.png")
                     ## evaluate metric on val
-                    metrics = compute_metrics(self.val_dl, self.model.module)
+                    metrics = compute_metric(self.val_dl, self.model)
                      ## send the metrics to wancdb
                     try:
                         # Log metrics to WandB for this epoch
@@ -217,7 +218,7 @@ class ImageSegmenter:
 
 
 def prepare_dataloader(dataset: Dataset):
-    return DataLoader_ROT(
+    return DataLoader(
         dataset,
         drop_last=False,
         batch_size=config.batch_size,

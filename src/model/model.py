@@ -57,7 +57,7 @@ class UNet(nn.Module):
 """This is Unet encoder only for self-supervised: Rotation Prediction (ROT)"""
 class UNetDense(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False):
-        super(UNet, self).__init__()
+        super(UNetDense, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear

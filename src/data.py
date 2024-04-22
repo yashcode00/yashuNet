@@ -1,3 +1,8 @@
+#####################################################
+## @author : Yash Sharma
+## @email: yashuvats.42@gmail.com
+#####################################################
+
 import random
 import torchnet as tnt
 import os
@@ -6,7 +11,6 @@ from torch.utils.data import Dataset
 import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
-
 
 
 """Dataset for the given dataset"""
@@ -33,21 +37,15 @@ class Histology(Dataset):
                 augmentations = self.transform(image=image, mask=mask)
                 image = augmentations['image']
                 mask = augmentations['mask']
-                return image, mask
+                return image, mask.unsqueeze(0)
             else:
                 augmentations = self.transform(image=image)
                 image = augmentations['image']
-                return image, _
+                return image, None
 
 
     
 """Dataloaders for both self-supervised and supervised tasks"""
-
-def denormalize(images, means, stds):
-    means = torch.tensor(means).reshape(1, 3, 1, 1)
-    stds = torch.tensor(stds).reshape(1, 3, 1, 1)
-    return images * stds + means
-
 
 def rotate_img(img, rot):
     if rot == 0:  # 0 degrees rotation
@@ -87,7 +85,7 @@ class DataLoader_ROT(object):
         # 1 for 90 degrees, 2 for 180 degrees, and 3 for 270 degrees.
         def _load_function(idx):
             idx = idx % len(self.dataset)
-            img0 = self.dataset[idx]
+            img0, _ = self.dataset[idx]
             rotated_imgs = [
                 img0,
                 rotate_img(img0,  90),

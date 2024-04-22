@@ -28,8 +28,7 @@ def calculate_metrics(predicted, true):
  
     return precision, recall, accuracy
 
-
-def compute_metric(loader, model):
+def compute_metric(loader, model, self_supervised = False):
     model.eval()
     jaccard_mean = 0
     dice_mean = 0
@@ -37,16 +36,40 @@ def compute_metric(loader, model):
     recall_mean = 0
     accuracy_mean = 0
     
+    device = next(model.parameters()).device  # Get the device of the model's parameters
+
+    if self_supervised:
+        with torch.no_grad():
+            for x, y in loader():
+                x = x.to(device)  # Move input data to the same device as the model
+                y = y.unsqueeze(1).to(device)
+                preds = torch.sigmoid(model.forward(x))
+                preds = (preds > 0.5).float()
+                jaccard = jaccard_index(preds, y)
+                dice = dice_coefficient(preds, y)
+                precision, recall, accuracy = calculate_metrics(preds, y)
+    
+                jaccard_mean += jaccard
+                dice_mean += dice
+                precision_mean += precision
+                recall_mean += recall
+                accuracy_mean += accuracy
+        return {
+        "Precision": precision_mean / len(loader),
+        "Recall": recall_mean / len(loader),
+        "Accuracy": accuracy_mean / len(loader)
+    }
+
     with torch.no_grad():
         for x, y in loader:
-            x = x
-            y = y.unsqueeze(1)
-            preds = torch.sigmoid(model(x))
+            x = x.to(device)  # Move input data to the same device as the model
+            y = y.unsqueeze(1).to(device)
+            preds = torch.sigmoid(model.forward(x))
             preds = (preds > 0.5).float()
             jaccard = jaccard_index(preds, y)
             dice = dice_coefficient(preds, y)
             precision, recall, accuracy = calculate_metrics(preds, y)
- 
+
             jaccard_mean += jaccard
             dice_mean += dice
             precision_mean += precision
@@ -54,9 +77,9 @@ def compute_metric(loader, model):
             accuracy_mean += accuracy
 
     return {
-        "Jaccard": jaccard_mean/len(loader),
-        "Dice": dice_mean/len(loader),
-        "Precision": precision_mean/len(loader),
-        "Recall": recall_mean/len(loader),
-        "Accuracy": accuracy_mean/len(loader)
+        "Jaccard": jaccard_mean / len(loader),
+        "Dice": dice_mean / len(loader),
+        "Precision": precision_mean / len(loader),
+        "Recall": recall_mean / len(loader),
+        "Accuracy": accuracy_mean / len(loader)
     }
