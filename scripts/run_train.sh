@@ -9,7 +9,7 @@
 
 # Define the Conda environment, activate it, and define the Python script and log file
 log_dir="/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/logs/"
-output_main="${log_dir}train.log"
+output_main="${log_dir}train-all.log"
 
 eval "$(conda shell.bash hook)" &> /nlsasfs/home/nltm-st/sujitk/temp/yashuNet/logs/error.txt
 

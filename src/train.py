@@ -93,8 +93,8 @@ class ImageSegmenter:
         ### making output save folders 
         if self.gpu_id == 0: 
             self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.wandb_run_name = f"HistologySegmentation_{self.timestamp}"
-            self.save_model_path = f"HistologySegmentation_{self.timestamp}"
+            self.wandb_run_name = f"final-HistologySegmentation_{self.timestamp}"
+            self.save_model_path = f"final-HistologySegmentation_{self.timestamp}"
             self.root = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/"
             self.save_model_path = os.path.join(self.root,self.save_model_path)
             self.pth_path = f"{self.save_model_path}/pthFiles"
