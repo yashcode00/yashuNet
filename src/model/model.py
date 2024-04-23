@@ -2,6 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import optim
 import sys
 sys.path.append("/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/src/model")
 from unet_parts import *
@@ -89,7 +90,72 @@ class UNetDense(nn.Module):
         # out = self.projector(x6)
         out = self.fc(x6)
         return out
-    
+
+class TripletLoss(nn.Module):
+    """
+    Triplet loss
+    Takes embeddings of an anchor sample, a positive sample and a negative sample
+    """
+
+    def __init__(self, margin):
+        super(TripletLoss, self).__init__()
+        self.margin = margin
+
+    def forward(self, anchor, positive, negative, size_average=True):
+        distance_positive = (anchor - positive).pow(2).sum(1)  # .pow(.5)
+        distance_negative = (anchor - negative).pow(2).sum(1)  # .pow(.5)
+        losses = F.relu(distance_positive - distance_negative + self.margin)
+        return losses.mean() if size_average else losses.sum()
+
+
+class ContrastiveLoss(nn.Module):
+    """
+    Contrastive loss
+    Takes embeddings of two samples and a target label == 1 if samples are from the same class and label == 0 otherwise
+    """
+
+    def __init__(self, margin=1):
+        super(ContrastiveLoss, self).__init__()
+        self.margin = margin
+        self.eps = 1e-9
+
+    def forward(self, output1, output2, target, size_average=True):
+        distances = (output2 - output1).pow(2).sum(1)  # squared distances
+        losses = 0.5 * (target.float() * distances +
+                        (1 + -1 * target).float() * F.relu(self.margin - (distances + self.eps).sqrt()).pow(2))
+        return losses.mean() if size_average else losses.sum()
+
+class ContrastiveSiameseUNet(nn.module):
+    def __init__(self, n_channels, n_classes, bilinear=False, lr=1e-3):
+        super(ContrastiveSiameseUNet, self).__init__()
+        self.n_channels = n_channels
+        self.bilinear = bilinear
+        self.n_classes = n_classes
+        self.inc = DoubleConv(n_channels, 64)
+        self.down1 = Down(64, 128)
+        self.down2 = Down(128, 256)
+        self.down3 = Down(256, 512)
+        factor = 2 if bilinear else 1
+        self.down4 = Down(512, 1024 // factor)
+        self.Avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Sequential(
+            nn.Linear(1024 // factor, 2048),
+            nn.ReLU(inplace=True),
+            nn.Linear(2048, self.n_classes)  # Output a 256-dimensional feature vector
+        )
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+        x5_pool = self.Avgpool(x5)
+        x6 = torch.flatten(x5_pool, 1)
+        features = self.fc(x6)
+        return features
+        
+
 # '''sanity check'''
 # def test():
 #     x = torch.randn((3, 1, 161, 161))

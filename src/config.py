@@ -28,6 +28,7 @@ class ModelConfig:
         self.batch_size_selfSupervised = 16
         self.batch_size = 32
 
+        self.lr = 1e-3
         self.lr1= 1e-4 ## for self-supervised training
         self.lr2 = 1e-6 ## for complete training full network for segmentation
         self.preload = None

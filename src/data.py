@@ -8,6 +8,7 @@ import torchnet as tnt
 import os
 from PIL import Image
 from torch.utils.data import Dataset
+from torchvision import transforms
 import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
@@ -43,8 +44,44 @@ class Histology(Dataset):
                 image = augmentations['image']
                 return image, None
 
+class ContrastiveRotationDataset(Dataset):
+    def __init__(self, directory, transform=None):
+        """
+        Args:
+            directory (str): Path to the directory containing images.
+            transform (callable, optional): Optional transform to be applied on a sample.
+        """
+        self.directory = directory
+        self.image_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(('.png', '.jpg', '.jpeg'))]
+        self.transform = transform
 
-    
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        # Load the image
+        image_path = self.image_files[idx]
+        image = np.array(Image.open(image_path).convert('RGB'))
+
+        # Randomly select another image to serve as a negative example
+        negative_idx = idx
+        while negative_idx == idx:
+            negative_idx = random.randint(0, len(self.image_files) - 1)
+        false_image = np.array(Image.open(self.image_files[negative_idx]).convert('RGB'))
+
+        # Apply transformations
+        if self.transform:
+            augmentations = self.transform(image=image)
+            image = augmentations['image']
+            augmentations = self.transform(image=false_image)
+            false_image = augmentations['image']
+
+        # Rotate the original image by 90 degrees to create a positive pair
+        rotations = np.array([90, 180, 270])
+        ridx = np.random.randint(0,3)
+        rotated_image = rotate_img(image, rotations[ridx])
+
+        return image, rotated_image, false_image    
 """Dataloaders for both self-supervised and supervised tasks"""
 
 def rotate_img(img, rot):

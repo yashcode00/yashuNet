@@ -28,6 +28,7 @@ def calculate_metrics(predicted, true):
  
     return precision, recall, accuracy
 
+
 def compute_metric(loader, model, self_supervised = False):
     model.eval()
     jaccard_mean = 0
