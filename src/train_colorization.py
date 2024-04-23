@@ -30,7 +30,7 @@ from data import *
 import warnings
 from metrics import *
 from getTransformations import *
-from plot import plot
+from plot import *
 
 ''' set random seeds '''
 seed_val = 312
@@ -67,23 +67,8 @@ class ImageSegmenter:
         self.model = self.load_model(self.load_path)
 
         # self.loss = torch.nn.CrossEntropyLoss(reduction='mean') ## why the fuck the scaler does wonders in convergence
-        # self.optimizer = optim.Adam(self.model.parameters(), lr=config.lr2)
-
-
-        # Group parameters into encoder and decoder groups
-        encoder_params = list(self.model.module.inc.parameters()) + list(self.model.module.down1.parameters()) + \
-                        list(self.model.module.down2.parameters()) + list(self.model.module.down3.parameters()) + \
-                        list(self.model.module.down4.parameters())
-        decoder_params = list(self.model.module.up1.parameters()) + list(self.model.module.up2.parameters()) + \
-                        list(self.model.module.up3.parameters()) + list(self.model.module.up4.parameters()) + \
-                        list(self.model.module.outc.parameters())
-
-        # Define optimizer with different learning rates for encoder and decoder
-        self.optimizer = optim.Adam([
-            {'params': encoder_params, 'lr': config.encoder_lr},
-            {'params': decoder_params, 'lr': config.decoder_lr}
-        ], config.lr2)
-        self.loss_fn = nn.BCEWithLogitsLoss()
+        self.optimizer = optim.Adam(self.model.parameters(), lr=config.lr1)
+        self.loss_fn = nn.MSELoss()
         self.scaler = torch.cuda.amp.GradScaler()
 
 
@@ -93,8 +78,8 @@ class ImageSegmenter:
         ### making output save folders 
         if self.gpu_id == 0: 
             self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.wandb_run_name = f"HistologySegmentation_{self.timestamp}"
-            self.save_model_path = f"HistologySegmentation_{self.timestamp}"
+            self.wandb_run_name = f"colorization_HistologySegmentation_{self.timestamp}"
+            self.save_model_path = f"colorization_HistologySegmentation_{self.timestamp}"
             self.root = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/"
             self.save_model_path = os.path.join(self.root,self.save_model_path)
             self.pth_path = f"{self.save_model_path}/pthFiles"
@@ -130,17 +115,12 @@ class ImageSegmenter:
         logging.info(f"Snapshot checkpointed successfully at location {self.pth_path} with number {epoch%15}")
     
     def load_model(self, path :str):
-        model = UNet(3,1).to(self.gpu_id)
+        model = UNet(1,3).to(self.gpu_id)
         model = DDP(model, device_ids=[self.gpu_id])
 
         if path is not None:    # preload path not None
             snapshot = torch.load(path)
-            state_dict = snapshot["model"]
-            if config.layers_to_exclude is not None:
-                logging.info(f"Found some layers to exclude from preload operation {config.layers_to_exclude}")
-                state_dict = {k: v for k, v in state_dict.items() if k not in config.layers_to_exclude}
-
-            u, v = model.module.load_state_dict(state_dict, strict=False)
+            u, v = model.module.load_state_dict(snapshot["model"], strict=False)
             logging.info(f"Missing keys: {u} \n Extra keys: {v}")
             logging.info("Models loaded successfully from the saved path.")
         else:
@@ -168,8 +148,10 @@ class ImageSegmenter:
                 batch_iterator = tqdm(self.val_dl, desc=f"Processing Val: Epoch {epoch} on local rank: {self.local_rank}", disable=self.gpu_id != 0)
 
             for images, targets  in batch_iterator:
-                images = images.to(self.gpu_id)
-                targets = targets.float().unsqueeze(1).to(self.gpu_id)
+                images = images.float().unsqueeze(1).to(self.gpu_id)
+                targets = targets.to(self.gpu_id)
+                # logging.info(f"Size of input image: {images.shape} and targets: {targets.shape}") 
+                # Size of input image: torch.Size([16, 1, 256, 256]) and targets: torch.Size([16, 3, 256, 256])
 
                 if phase == "val":
                     with torch.no_grad():
@@ -187,7 +169,7 @@ class ImageSegmenter:
 
                 running_loss += loss.item()
             
-            # metrics = self.calculate_scores(pred, gts, phase
+            # metrics = self.calculate_scores(pred, gts, phase)
             metrics = {}
 
             # Calculate mean loss after the epoch
@@ -199,19 +181,6 @@ class ImageSegmenter:
 
             # update tqdm loop
             batch_iterator.set_postfix(loss=mean_loss)
-
-            if phase == "val" and self.gpu_id == 0:
-                # logging.info(f"meanloss: {mean_loss}, {type(mean_loss)}")
-                if mean_loss < self.bestLoss:
-                    logging.info("**x**"*100)
-                    logging.info(f"Saving the bset model so far with least val loss: previousBest: {self.bestLoss} , current :{mean_loss}")
-                    self.bestLoss = mean_loss
-                    snapshot = {
-                        "model":self.model.module.state_dict(),
-                        "epoch":epoch,
-                    }
-                    torch.save(snapshot, os.path.join(self.chkpt_path,f"bestModel"))
-                    logging.info(f"Snapshot best model checkpointed successfully at location {self.chkpt_path}")
 
             # Print combined training and validation stats
             if self.gpu_id == 0:
@@ -235,16 +204,7 @@ class ImageSegmenter:
         for epoch in range(self.n_epochs):
                 self.run_epoch(epoch)
                 if self.gpu_id == 0:
-                    plot(self.model.module, self.val_dl, self.eval_path, f"{str(epoch)}.png")
-                    ## evaluate metric on val
-                    metrics = compute_metric(self.val_dl, self.model)
-                     ## send the metrics to wancdb
-                    try:
-                        # Log metrics to WandB for this epoch
-                        wandb.log(metrics)
-
-                    except Exception as err:
-                        logging.error("Not able to log to wandb, ", err)
+                    plot_colorization(self.model.module, self.val_dl, self.eval_path, f"{str(epoch)}.png")
                     # saving the model
                     self.save_model(epoch)
         logging.info("Training complete")
@@ -269,11 +229,11 @@ def main():
     assert torch.cuda.is_available(), "Training on CPU is not supported"
 
     ## LOADING THE DATASETS UNLABELLED FOR SELF SUPERVISED LEARNING
-    train_tfms, val_tfms = get_transforms()
+    train_tfms, val_tfms = get_transforms(self_supervised=True, task_name="colorization")
 
     # Create dataset instance
-    train_dataset = Histology(config.paths["labelled"]["train_images"],mask_dir=config.paths["labelled"]["train_masks"],  transform=train_tfms)
-    val_dataset =  Histology(config.paths["labelled"]["val_images"], mask_dir=config.paths["labelled"]["val_masks"], transform=val_tfms)
+    train_dataset = Histology_colorization(config.paths["labelled"]["train_images"], transform=train_tfms)
+    val_dataset =  Histology_colorization(config.paths["labelled"]["val_images"], transform=val_tfms)
 
     # Create DataLoader
     train_dataloader = prepare_dataloader(train_dataset)
