@@ -1,0 +1,227 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Tomorrow:wght@300;400&display=swap');
+
+#pageHeader {
+    min-height: 40%;
+    color: rgb(0, 0, 0);
+    opacity: 0.85;
+    background-color: #fff;
+    font-family: 'Tomorrow', sans-serif;
+    padding: 10px;
+}
+
+#pagemaintitle {
+    color: black;
+}
+
+#title-box {
+    margin: auto;
+}
+#title-box img {
+    height: 100%;
+    width: auto;
+    max-height: 100px !important;
+    float: right;
+    transform: scale(135%);
+    filter: brightness(110%);
+}
+
+@media (min-width: 576px) {
+    #sidebar {
+        overflow-y: hidden;
+        width: 16em;
+        border-right: 1px solid lightgray;
+        min-height: calc(100vh - 80px - 7.3rem);
+    }
+    /* No wrap only for top-level div because the Dygraph aggressively 
+    shifts its size/position for every pixel, breaking the layout */
+    #pagemainarea {
+        flex-wrap: nowrap !important;
+        /* max-width: calc(100vw - 16em);  */
+    }
+    #pagemainarea * {
+        flex-wrap: wrap;
+    }
+}
+
+#pagemainarea {
+    /* height: 100vh; */
+    /* 34px 65.391 5*/
+    min-height: calc(100vh - 5px - 34px - 85.391px);
+}
+
+.nav-link:hover {
+    background-color: lavender;
+    transition: background-color 0.3s;
+}
+
+.formInstructions {
+    font-size: 90%;
+    line-height: 160%;
+}
+
+#dragDropDisplay {
+    top: 0;
+    left: 0;
+    z-index: 100;
+    background-color: rgba(245, 245, 245, 0.8);
+    text-shadow: 0px 0px 10px grey;
+    border: lightgrey 10px dashed;
+    /* transition: display 0.5s; */
+}
+#contentDiv * {
+    pointer-events: none;
+}
+
+details .form-control-sm {
+    border: 1px solid #ced4da;
+}
+
+tr.highlight {
+    background-color: rgb(215, 250, 255);
+}
+
+/* #uploadedFiles tr td:nth-child(1) {
+    width: 50%;
+} */
+/* #uploadedFiles .btn-group .btn:nth-child(1),
+#uploadedFiles .btn-group .btn:nth-child(2) {
+    font-size: larger; 
+}
+
+#uploadedFiles .btn select {
+    font-size: large;
+} */
+
+.fixed-input {
+    background: none;
+    color: black;
+    border: none;
+}
+.invalid-row {
+    color: slategray;
+    background-color: lightgrey;
+    font-style: italic;
+}
+
+#uploadedFiles, #convertedFiles {
+    background-color: rgba(255,255,255,0.75);
+}
+
+.downloadbtn{
+    cursor: pointer;
+    font-size: 30px;
+}
+
+.downloadbtn:hover{
+    background: #75d080;
+    padding: 5px 8px;
+    border-radius: 10px;
+    position: relative;
+    right: -8px;
+    margin-left: -16px;
+}
+
+#formFile {
+    background-color: gray;
+}
+
+.form-label {
+    background-color: #64b5f6;
+}
+
+#uploadContainer {
+    width: 60%;
+    margin: auto;
+}
+
+.outer-select-file {
+    background-color: #86c5f8 !important;
+    border-radius: 8px;
+    padding: 1px 15px;
+}
+
+.select-file {
+    z-index: 100;
+    background-color: #64b5f6;
+    border-style: dashed;
+    border-color: white;
+    border-radius: 8px;
+    border-width: 1px;
+    padding: 100px;
+}
+
+.select-file:hover {
+    cursor: pointer;
+}
+
+#formFile {
+    width: 1px !important;
+    height: 1px !important;
+}
+
+.main {
+    background-color: #f5f5f5 !important;
+    padding: 0;
+}
+
+.table-outer-div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    height: 100%;
+    width: 100%;
+}
+
+.spectrum {
+    height: 5px;
+    width: 100%;
+    background-color: #64b5f6;
+}
+
+.spectrum-band {
+    height: 100%;
+    padding: 0px;
+    border-color: black;
+}
+
+.band-1 {
+    background-color: #0d47a1;
+}
+
+.band-2 {
+    background-color: #1565c0;
+}
+
+.band-3 {
+    background-color: #1976d2;
+}
+
+.band-4 {
+    background-color: #1e88e5;
+}
+
+.band-5 {
+    background-color: #2196f3;
+}
+
+.band-6 {
+    background-color: #42a5f5;
+}
+
+.band-7 {
+    background-color: #64b5f6;
+}
+
+.band-8 {
+    background-color: #90caf9;
+}
+
+.footer {
+    margin: 0px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 10px;
+  }

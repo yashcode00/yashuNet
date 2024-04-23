@@ -18,19 +18,42 @@ class ModelConfig:
         self.paths["unlabelled"]["train"] = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/datasets/HistologyNet/unlabelled/train_image"
         self.paths["unlabelled"]["val"] = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/datasets/HistologyNet/unlabelled/val_image"
 
-        self.n_epochs_supervised = 500
+        self.n_epochs_supervised = 100
         self.n_epochs_unsupervised = 500 
 
         self.stats = ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) ### remove this later or change this
+
         self.IMAGE_HEIGHT = 256
         self.IMAGE_WIDTH  = 256
 
-        self.batch_size_selfSupervised = 16
-        self.batch_size = 32
+        self.batch_size_selfSupervised = 8
+<<<<<<< HEAD
+        self.batch_size = 64
+=======
+        self.batch_size = 128
+>>>>>>> 02ee3edc2a87abdf88761f4aebef83fb090834f4
 
         self.lr = 1e-3
         self.lr1= 1e-4 ## for self-supervised training
         self.lr2 = 1e-6 ## for complete training full network for segmentation
         self.preload = None
-        self.preload2= None
+<<<<<<< HEAD
+        self.preload2= None #"/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/colorization_HistologySegmentation_20240423_162019/pthFiles/model_epoch_14"
+=======
+        self.preload2= "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/colorization_HistologySegmentation_20240423_162019/pthFiles/model_epoch_14"
+>>>>>>> 02ee3edc2a87abdf88761f4aebef83fb090834f4
+        # Define the layers you want to exclude
+        self.layers_to_exclude = ['inc.double_conv.0.weight', 'outc.conv.weight', 'outc.conv.bias']
+
+
+        ## for the final train after train
+<<<<<<< HEAD
+        # self.encoder_lr = 1e-6
+        # self.decoder_lr = 5e-4
+        self.encoder_lr = 1e-4
+        self.decoder_lr = 1e-4
+=======
+        self.encoder_lr = 1e-6
+        self.decoder_lr = 5e-4
+>>>>>>> 02ee3edc2a87abdf88761f4aebef83fb090834f4
         
