@@ -1,0 +1,43 @@
+{% extends 'base.html' %} {% block head_additions %}
+<script type="application/javascript" src="/static/upload.js" defer></script>
+{% endblock %} {% block content %}
+<div class="h-100 d-flex align-items-center position-relative px-4" id="uploadContainer">
+    <div class="container-fluid py-5">
+        <div class="outer-select-file">
+            <div class="my-3 pb-6 align-items-center select-file">
+                <div class="w-50 m-auto row">
+                    <div class="col text-center bg-light rounded-2">
+                        <label class="btn btn-lg">
+                            <input type="file" id="formFile" name="formFile" class="d-none"  multiple required
+                            accept="image/png, image/jpg, image/jpeg"/>
+                            Select from Computer &nbsp; <i class="bi bi-cloud-upload"></i>
+                        </label>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col text-center">
+                        <span class="form-label h5 mt-4 mb-2 d-block text-white"> or drag and drop here!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <form method="POST" id="submissionform" enctype="multipart/form-data" action="/upload" class="container-lg m-0 p-0">
+            <div class="my-3">
+                <table class="table w-100">
+                    <tbody id="uploadedFiles"></tbody>
+                </table>
+            </div>
+            <div class="row my-4">
+                <div class="col-4"><!--empty--></div>
+                    <button type="submit" id="submitBtn" form="submissionform" class="col-4 btn btn-primary d-none">Upload</button>
+                <div class="col-4"><!--empty--></div>
+            </div>
+        </form>
+    </div>
+    <div id="dragDropDisplay" class="w-100 h-100 mx-0 my-0 position-absolute d-flex align-items-center d-none">
+        <div class="mx-auto">
+            <span class="display-1 text-white"><i class="bi bi-cloud-upload-fill"></i></span>
+        </div>
+    </div>
+</div>
+{% endblock %}
