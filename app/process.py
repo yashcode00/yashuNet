@@ -23,7 +23,7 @@ def process(*file):
     dbcurs = dbconn.cursor()
 
     time.sleep(2)    
-    ppath = os.path.join(__file__, f'converted/{file[1]}')
+    ppath = file[2]
 
     dbcurs.execute(f"""UPDATE user SET processed_path="{ppath}" WHERE file_uuid="{file[0]}"; """)
     dbcurs.execute(f"""UPDATE user SET status="Done" WHERE file_uuid="{file[0]}"; """)

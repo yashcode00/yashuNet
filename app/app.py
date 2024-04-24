@@ -23,22 +23,22 @@ load_dotenv()
 PATHBASE = os.path.abspath(os.path.dirname(__file__))
 logger.info(f"Base Path : {PATHBASE}")
 
-if 'uploads' not in os.listdir():
+if 'uploads' not in os.listdir(os.path.join(PATHBASE, "static")):
     print("Creating Upload directory.....")
-    os.makedirs('uploads')
+    os.makedirs('static/uploads')
 else:
-    for file in os.listdir(os.path.join(PATHBASE, "uploads")):
-        file_path = os.path.join(os.path.join(PATHBASE, "uploads"), file)
+    for file in os.listdir(os.path.join(PATHBASE, "static/uploads")):
+        file_path = os.path.join(os.path.join(PATHBASE, "static/uploads"), file)
         if os.path.isfile(file_path):
             # Delete the file
             os.remove(file_path)
 
-if 'converted' not in os.listdir():
+if 'converted' not in os.listdir(os.path.join(PATHBASE, "static")):
     print("Creating Converted directory.....")
-    os.makedirs('converted')
+    os.makedirs('static/converted')
 else:
-    for file in os.listdir(os.path.join(PATHBASE, "converted")):
-        file_path = os.path.join(os.path.join(PATHBASE, "converted"), file)
+    for file in os.listdir(os.path.join(PATHBASE, "static/converted")):
+        file_path = os.path.join(os.path.join(PATHBASE, "static/converted"), file)
         if os.path.isfile(file_path):
             # Delete the file
             os.remove(file_path)
@@ -48,6 +48,7 @@ if os.path.exists(os.path.join(PATHBASE, "instance/database.db")):
 
 
 app = Flask(__name__)
+
 CORS(app)
 # sets max payload limit 
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1000 * 1000
@@ -138,7 +139,7 @@ def upload_page():
             # new name
             filename = str(files[f]) + "_" + filename
             # saving files locally
-            path =  os.path.join("uploads", filename)
+            path =  os.path.join("static/uploads", filename)
             f.save(path)  
 
             id = str(files[f])  # file id
@@ -172,6 +173,27 @@ def display_page():
     """Display page to download files"""
     user_uuid = request.args['user_uuid']
     return render_template('display.html', user_uuid=user_uuid)
+
+@app.route('/getdata/<id>')
+def get_user_data(id):
+    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbcurs = dbconn.cursor()
+    query = dbcurs.execute(f'SELECT * FROM user WHERE user_uuid="{id}"').fetchall()
+    response = []
+    dbconn.commit()
+    dbconn.close()
+
+    for file in query:
+        response.append({
+            'user_id': file[DBSCHEMA["user_uuid"]],
+            'file_id': file[DBSCHEMA["file_uuid"]],
+            'path': file[DBSCHEMA["path"]],
+            'status': file[DBSCHEMA['status']],
+            'name': file[DBSCHEMA["name"]],
+            'processed_path': file[DBSCHEMA["processed_path"]]
+        })
+
+    return jsonify(response)
 
 
 @app.route('/status/<id>')

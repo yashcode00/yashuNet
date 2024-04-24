@@ -121,11 +121,12 @@ class ContrastiveLoss(nn.Module):
 
     def forward(self, output1, output2, target, size_average=True):
         distances = (output2 - output1).pow(2).sum(1)  # squared distances
+        target = torch.tensor(target)
         losses = 0.5 * (target.float() * distances +
                         (1 + -1 * target).float() * F.relu(self.margin - (distances + self.eps).sqrt()).pow(2))
-        return losses.mean() if size_average else losses.sum()
+        return losses.mean() if size_average else losses.sum(), distances
 
-class ContrastiveSiameseUNet(nn.module):
+class ContrastiveSiameseUNet(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False, lr=1e-3):
         super(ContrastiveSiameseUNet, self).__init__()
         self.n_channels = n_channels
@@ -141,7 +142,7 @@ class ContrastiveSiameseUNet(nn.module):
         self.fc = nn.Sequential(
             nn.Linear(1024 // factor, 2048),
             nn.ReLU(inplace=True),
-            nn.Linear(2048, self.n_classes)  # Output a 256-dimensional feature vector
+            nn.Linear(2048, self.n_classes)  # Output a 512-dimensional feature vector
         )
 
     def forward(self, x):
