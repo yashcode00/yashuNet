@@ -67,8 +67,6 @@ function fListRowHTML(file, srctype, cnt) {
 
     parentr.innerHTML =  `
     <input type="file" class="d-none" name="file_${uid}" form="submissionform"/>
-    <input type="text" class="d-none" name="name_${uid}" value="${file.name}" form="submissionform"/>
-    <input type="text" class="d-none" name="srctype_${uid}" value="${mimetypes[srctype]}" form="submissionform"/>
     <td><div class="table-outer-div"><div class="table-inner-div">${file.name}</div></div></td>
     <td class="centered">
         <div class="table-outer-div">
