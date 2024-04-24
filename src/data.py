@@ -12,6 +12,8 @@ from torchvision import transforms
 import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
 
 
 """Dataset for the given dataset"""
@@ -32,7 +34,7 @@ class Histology(Dataset):
             mask_path = os.path.join(self.mask_dir, self.images[index])
             mask = np.array(Image.open(mask_path).convert('L'), dtype=np.float32)
             mask[mask == 255.0] = 1.0
-
+working c
         if self.transform is not None:
             if self.mask_dir is not None:
                 augmentations = self.transform(image=image, mask=mask)
@@ -54,7 +56,16 @@ class ContrastiveRotationDataset(Dataset):
         self.directory = directory
         self.image_files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(('.png', '.jpg', '.jpeg'))]
         self.transform = transform
-
+        stats =  ([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        self.transform_positive = A.Compose([
+                                                A.RandomResizedCrop(height=256, width=256),
+                                                A.HorizontalFlip(p=0.5),
+                                                A.ColorJitter(p=0.2),
+                                                A.RandomRotate90(p=0.5),
+                                                A.GaussianBlur(p=0.2),
+                                                A.Normalize(*stats),
+                                                ToTensorV2(),
+                                            ])
     def __len__(self):
         return len(self.image_files)
 
@@ -71,17 +82,22 @@ class ContrastiveRotationDataset(Dataset):
 
         # Apply transformations
         if self.transform:
+            positive = self.transform_positive(image = image)['image']
             augmentations = self.transform(image=image)
             image = augmentations['image']
             augmentations = self.transform(image=false_image)
             false_image = augmentations['image']
 
+        ## for the positive image
         # Rotate the original image by 90 degrees to create a positive pair
         rotations = np.array([90, 180, 270])
         ridx = np.random.randint(0,3)
-        rotated_image = rotate_img(image, rotations[ridx])
-
+        rotated_image = rotate_img(positive, rotations[ridx])
         return image, rotated_image, false_image    
+
+
+
+
 """Dataloaders for both self-supervised and supervised tasks"""
 
 def rotate_img(img, rot):
