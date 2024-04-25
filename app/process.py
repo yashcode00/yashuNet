@@ -19,9 +19,10 @@ DBSCHEMA = {
 
 load_dotenv()
 
+PATHBASE = os.path.abspath(os.path.dirname(__file__))
 def process(*file):
     # Apply model here ##############################
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
 
 
@@ -41,7 +42,7 @@ def process(*file):
 
 def main():
 
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
 
     query = dbcurs.execute(f'SELECT * FROM user WHERE status="Pending" ORDER BY created_at').fetchall()

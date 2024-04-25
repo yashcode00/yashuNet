@@ -60,14 +60,14 @@ app.app_context().push()
 
 
 try :
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.path.join(PATHBASE, os.getenv('DATABASE_PATH'))))
     dbcurs = dbconn.cursor()
     dbcurs.execute("SELECT * FROM user")
     dbconn.close()
 except sqlite3.OperationalError :
     logger.warning("DB : Creating new database")
-    open(os.getenv('DATABASE_PATH'),'w').close()
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    open(os.path.join(PATHBASE, os.path.join(PATHBASE, os.getenv('DATABASE_PATH'))),'w').close()
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
     dbcurs.execute("""
 CREATE TABLE user (
@@ -132,7 +132,7 @@ def upload_page():
         user_uuid = str(uuid.uuid1())
 
         for f in files.keys():
-            dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+            dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
             dbcurs = dbconn.cursor()
             # extract name of file
             filename = f.filename
@@ -177,7 +177,7 @@ def display_page():
 
 @app.route('/getdata/<id>')
 def get_user_data(id):
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
     query = dbcurs.execute(f'SELECT * FROM user WHERE user_uuid="{id}"').fetchall()
     response = []
@@ -201,7 +201,7 @@ def get_user_data(id):
 def status_check(id):
     """Return JSON with info about whether the uploaded file has been parsed successfully."""
     # query = User.query.filter(User.user_uuid == id).all()
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
     query = dbcurs.execute(f'SELECT * FROM user WHERE user_uuid="{id}"').fetchall()
     response = []
@@ -238,7 +238,7 @@ def download_file(id):
 
 @app.route('/downloadAll/<id>')
 def download_all(id):
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
     query = dbcurs.execute(f'SELECT * FROM user WHERE user_uuid="{id}"').fetchall()
     dbconn.commit()
