@@ -91,7 +91,7 @@ class UNetDense(nn.Module):
         out = self.fc(x6)
         return out
 
-class ContrastiveSiameseUNet(nn.module):
+class ContrastiveSiameseUNet(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False, lr=1e-3):
         super(ContrastiveSiameseUNet, self).__init__()
         self.n_channels = n_channels

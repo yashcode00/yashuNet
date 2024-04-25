@@ -4,6 +4,15 @@ import sys, traceback, os, datetime
 import sqlite3
 from dotenv import load_dotenv
 import time
+from yashuNet.src.model.model import UNet
+import torch
+
+# Model working
+MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models')
+model = UNet(3,1)
+model.load_state_dict(torch.load(os.path.join(MODEL_DIR, os.getenv('MODEL_NAME'))))
+
+
 
 DBSCHEMA = {
     "user_uuid" : 0,
