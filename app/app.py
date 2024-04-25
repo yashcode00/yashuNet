@@ -12,6 +12,7 @@ import json
 from flask_cors import CORS
 import sqlite3
 import time
+import zipfile
 from process import main
 
 logger = logging.getLogger('webserver')
@@ -113,8 +114,6 @@ def landing_page():
 
 @app.route('/upload', methods=['POST','GET'])
 def upload_page():
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
-    dbcurs = dbconn.cursor()
 
     if request.method == 'POST':
         files = {}
@@ -133,6 +132,8 @@ def upload_page():
         user_uuid = str(uuid.uuid1())
 
         for f in files.keys():
+            dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+            dbcurs = dbconn.cursor()
             # extract name of file
             filename = f.filename
             ext = filename.split('.')[1]
@@ -227,23 +228,36 @@ def status_check(id):
     return jsonify(response)
 
 
-# @app.route('/download/<id>')
-# def download_file(id):
-#     """Download the converted file."""
-#     print("download link")
-#     dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
-#     dbcurs = dbconn.cursor()
-#     query = dbcurs.execute(f'SELECT * FROM user WHERE file_uuid="{id}"').fetchone()
-#     if query:
-#         filename = os.path.splitext(query[DBSCHEMA["name"]])[0] + '.' + query[DBSCHEMA["desiredExtension"]].lower()
-#         dbconn.commit()
-#         dbconn.close()
-#         return send_file('converted/'+filename, as_attachment=True)
-#     else:
-#         dbconn.commit()
-#         dbconn.close()
-#         return '', 404
+@app.route('/download/<id>')
+def download_file(id):
+    """Download the converted file."""
+    print("download link")
+    outputFile = os.path.join(PATHBASE, f'static/converted/{id}')
+    return send_file(outputFile, as_attachment=True)
 
+
+@app.route('/downloadAll/<id>')
+def download_all(id):
+    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbcurs = dbconn.cursor()
+    query = dbcurs.execute(f'SELECT * FROM user WHERE user_uuid="{id}"').fetchall()
+    dbconn.commit()
+    dbconn.close()
+
+    downloadPath = []
+    for file in query:
+        fstatus = file[DBSCHEMA["status"]]
+        if(fstatus == "Done"):
+            downloadPath.append(os.path.join(PATHBASE, file[DBSCHEMA['processed_path']]))
+    
+    print(downloadPath)
+
+    zip_file_path = '/tmp/downloaded_files.zip'
+    with zipfile.ZipFile(zip_file_path, 'w') as zipf:
+        for file_path in downloadPath:
+            zipf.write(file_path, os.path.basename(file_path))
+
+    return send_file(zip_file_path, as_attachment=True)
 
 
 

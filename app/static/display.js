@@ -4,6 +4,7 @@ const user_uuid = urlParams.get('user_uuid');
 // selecting required element
 const paginationEle = document.querySelector(".pagination ul");
 const displayEle = document.querySelector('.showcase');
+const downloadBtn = document.querySelector('.dwn-btn');
 
 var globalData;
 let page = 1;
@@ -25,6 +26,54 @@ function ajax_call() {
     return JSON.parse(fileStatusList);
 }
 
+function downloadAllFiles(ele) {
+    let url = `/downloadAll/${user_uuid}`;
+    let filename = `${user_uuid}.zip`;
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'blob';
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            var blob = new Blob([xhr.response], { type: 'application/octet-stream' });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    };
+    xhr.send();
+}
+
+function downloadFile(ele){
+    let filepath = ele.id;
+    console.log(filepath);
+    let filename = filepath.split('/');
+    filename = filename[filename.length - 1];
+
+    let url = `/download/${filename}`;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'blob';
+    xhr.onload = function () {
+        if (xhr.status === 200) {
+            var blob = new Blob([xhr.response], { type: 'application/octet-stream' });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    };
+    xhr.send();
+}
+
 //calling function with passing parameters and adding inside element which is ul tag
 function createDisplay(page){
     let totalPages = globalData.length;
@@ -36,11 +85,15 @@ function createDisplay(page){
     paginationEle.classList.remove('d-none');
     
     imgTag += `<div><img src=/${globalData[page-1].path} class="result-img" />`;
-    imgTag += `<img src=/${globalData[page-1].path} class="result-img" /></div>`;
+    imgTag += `<img src=/${globalData[page-1].processed_path} class="result-img" /></div>`;
 
+    // Change the display pallete
     displayEle.innerHTML = imgTag;
     console.log(totalPages);
     console.log(displayEle);
+
+    // change the download button
+    downloadBtn.setAttribute('id', globalData[page-1].processed_path);
 
     if (totalPages==1) {
         paginationEle.classList.add('d-none');
@@ -49,7 +102,7 @@ function createDisplay(page){
     }
     
     if(page > 1){ //show the next button if the page value is greater than 1
-        liTag += `<li class="btn prev" onclick="createPagination(${page - 1})"><span><i class="fas fa-angle-left"></i> Prev</span></li>`;
+        liTag += `<li class="btn prev" onclick="createDisplay(${page - 1})"><span><i class="fas fa-angle-left"></i> Prev</span></li>`;
     }
 
     //   if(page > 2){ //if page value is less than 2 then add 1 after the previous button
@@ -87,7 +140,7 @@ function createDisplay(page){
         }else{ //else leave empty to the active variable
         active = "";
         }
-        liTag += `<li class="numb ${active}" onclick="createPagination(${plength})"><span>${plength}</span></li>`;
+        liTag += `<li class="numb ${active}" onclick="createDisplay(${plength})"><span>${plength}</span></li>`;
     }
 
     //   if(page < totalPages - 1){ //if page value is less than totalPage value by -1 then show the last li or page
@@ -98,7 +151,7 @@ function createDisplay(page){
     //   }
 
     if (page < totalPages) { //show the next button if the page value is less than totalPage(20)
-        liTag += `<li class="btn next" onclick="createPagination(${page + 1})"><span>Next <i class="fas fa-angle-right"></i></span></li>`;
+        liTag += `<li class="btn next" onclick="createDisplay(${page + 1})"><span>Next <i class="fas fa-angle-right"></i></span></li>`;
     }
 
     paginationEle.innerHTML = liTag; //add li tag inside ul tag
