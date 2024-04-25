@@ -1,11 +1,7 @@
 """ the U-Net model """
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch import optim
-import sys
-sys.path.append("/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/src/model")
-from unet_parts import *
+from modelCode.unet_parts import *
 
 
 
@@ -121,23 +117,4 @@ class ContrastiveSiameseUNet(nn.Module):
         features = self.fc(x6)
         return features
         
-
-# '''sanity check'''
-# def test():
-#     x = torch.randn((3, 1, 161, 161))
-#     model = UNet(1, 1)
-#     preds = model(x)
-#     print(preds.shape)
-#     print(x.shape)
-
-#     assert preds.shape == x.shape
-
-# def test_selfSupervised():
-#     x = torch.randn((3, 3, 161, 161))
-#     model = UNet(3, 4)
-#     preds = model(x)
-#     print(preds)
-#     print(preds.shape)
-
-# test()
 

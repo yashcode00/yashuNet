@@ -1,46 +1,56 @@
 from flask import Flask, flash, jsonify, request,send_file, redirect, url_for, redirect, render_template, send_from_directory
 from dotenv import load_dotenv
-import os, sys
-import subprocess
-import datetime
+import os
 import threading
 import logging
 import uuid
 import time
 from werkzeug.utils import secure_filename
-import json
 from flask_cors import CORS
 import sqlite3
 import time
+import zipfile
+
 from process import main
+from database import *
+load_dotenv()
 
 logger = logging.getLogger('webserver')
 logging.basicConfig(level=logging.INFO,
     format='%(name)-10s %(levelname)-8s [%(asctime)s] %(message)s',
 )
 
-load_dotenv()
+
 PATHBASE = os.path.abspath(os.path.dirname(__file__))
 logger.info(f"Base Path : {PATHBASE}")
 
-if 'uploads' not in os.listdir():
+if 'uploads' not in os.listdir(os.path.join(PATHBASE, "static")):
     print("Creating Upload directory.....")
-    os.makedirs('uploads')
+    os.makedirs('static/uploads')
 else:
-    for file in os.listdir(os.path.join(PATHBASE, "uploads")):
-        file_path = os.path.join(os.path.join(PATHBASE, "uploads"), file)
+    for file in os.listdir(os.path.join(PATHBASE, "static/uploads")):
+        file_path = os.path.join(os.path.join(PATHBASE, "static/uploads"), file)
         if os.path.isfile(file_path):
             # Delete the file
             os.remove(file_path)
 
-if 'converted' not in os.listdir():
+if 'converted' not in os.listdir(os.path.join(PATHBASE, "static")):
     print("Creating Converted directory.....")
-    os.makedirs('converted')
+    os.makedirs('static/converted')
 else:
-    for file in os.listdir(os.path.join(PATHBASE, "converted")):
-        file_path = os.path.join(os.path.join(PATHBASE, "converted"), file)
+    for file in os.listdir(os.path.join(PATHBASE, "static/converted")):
+        file_path = os.path.join(os.path.join(PATHBASE, "static/converted"), file)
         if os.path.isfile(file_path):
             # Delete the file
+            os.remove(file_path)
+
+if 'tmp' not in os.listdir(os.path.join(PATHBASE, "static")):
+    print("Creating temp directory.....")
+    os.makedirs('static/tmp')
+else:
+    for file in os.listdir(os.path.join(PATHBASE, "static/tmp")):
+        file_path = os.path.join(os.path.join(PATHBASE, "static/tmp"), file)
+        if os.path.isfile(file_path):
             os.remove(file_path)
 
 if os.path.exists(os.path.join(PATHBASE, "instance/database.db")):
@@ -48,6 +58,7 @@ if os.path.exists(os.path.join(PATHBASE, "instance/database.db")):
 
 
 app = Flask(__name__)
+
 CORS(app)
 # sets max payload limit 
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1000 * 1000
@@ -58,46 +69,18 @@ app.app_context().push()
 
 
 try :
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.path.join(PATHBASE, os.getenv('DATABASE_PATH'))))
     dbcurs = dbconn.cursor()
     dbcurs.execute("SELECT * FROM user")
     dbconn.close()
 except sqlite3.OperationalError :
     logger.warning("DB : Creating new database")
-    open(os.getenv('DATABASE_PATH'),'w').close()
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    open(os.path.join(PATHBASE, os.path.join(PATHBASE, os.getenv('DATABASE_PATH'))),'w').close()
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
-    dbcurs.execute("""
-CREATE TABLE user (
-        user_uuid VARCHAR(36) NOT NULL, 
-        file_uuid VARCHAR(36) NOT NULL,
-        name VARCHAR(100) NOT NULL,
-        path VARCHAR(100) NOT NULL, 
-        created_at DATETIME DEFAULT (CURRENT_TIMESTAMP), 
-        status VARCHAR(100) DEFAULT 'Pending' NOT NULL, 
-        processed_path VARCHAR(100) DEFAULT 'NaN' NOT NULL, 
-        expiry INT NULL,
-        PRIMARY KEY (user_uuid, file_uuid)
-);
-""")
+    dbcurs.execute(CREATE_TABLE)
     dbconn.commit()
     dbconn.close()
-
-DBSCHEMA = {
-    "user_uuid" : 0,
-    "file_uuid" : 1,
-    "name" : 2,
-    "path" : 3,
-    "created_at" : 4,
-    "status" : 5,
-    "processed_path" : 6,
-    "expiry" : 7
-}
-
-# ***************************************
-# Helper Functions
-# ***************************************
-
 
 
 # ***************************************
@@ -112,8 +95,6 @@ def landing_page():
 
 @app.route('/upload', methods=['POST','GET'])
 def upload_page():
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
-    dbcurs = dbconn.cursor()
 
     if request.method == 'POST':
         files = {}
@@ -132,21 +113,21 @@ def upload_page():
         user_uuid = str(uuid.uuid1())
 
         for f in files.keys():
+            dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
+            dbcurs = dbconn.cursor()
             # extract name of file
             filename = f.filename
             ext = filename.split('.')[1]
             # new name
             filename = str(files[f]) + "_" + filename
             # saving files locally
-            path =  os.path.join("uploads", filename)
+            path =  os.path.join("static/uploads", filename)
             f.save(path)  
 
             id = str(files[f])  # file id
             current_time = time.time()
 
-            dbcurs.execute("""
-            INSERT INTO user(user_uuid,file_uuid,name,path,expiry) VALUES (?,?,?,?,?) 
-            """, (user_uuid, id, filename, path, current_time))
+            dbcurs.execute(INSERT_QUERY, (user_uuid, id, filename, path, current_time))
             dbconn.commit()
             dbconn.close()
 
@@ -173,14 +154,35 @@ def display_page():
     user_uuid = request.args['user_uuid']
     return render_template('display.html', user_uuid=user_uuid)
 
+@app.route('/getdata/<id>')
+def get_user_data(id):
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
+    dbcurs = dbconn.cursor()
+    query = dbcurs.execute(get_user_query(id)).fetchall()
+    response = []
+    dbconn.commit()
+    dbconn.close()
+
+    for file in query:
+        response.append({
+            'user_id': file[DBSCHEMA["user_uuid"]],
+            'file_id': file[DBSCHEMA["file_uuid"]],
+            'path': file[DBSCHEMA["path"]],
+            'status': file[DBSCHEMA['status']],
+            'name': file[DBSCHEMA["name"]],
+            'processed_path': file[DBSCHEMA["processed_path"]]
+        })
+
+    return jsonify(response)
+
 
 @app.route('/status/<id>')
 def status_check(id):
     """Return JSON with info about whether the uploaded file has been parsed successfully."""
     # query = User.query.filter(User.user_uuid == id).all()
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
-    query = dbcurs.execute(f'SELECT * FROM user WHERE user_uuid="{id}"').fetchall()
+    query = dbcurs.execute(get_user_query(id)).fetchall()
     response = []
     dbconn.commit()
     dbconn.close()
@@ -205,23 +207,39 @@ def status_check(id):
     return jsonify(response)
 
 
-# @app.route('/download/<id>')
-# def download_file(id):
-#     """Download the converted file."""
-#     print("download link")
-#     dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
-#     dbcurs = dbconn.cursor()
-#     query = dbcurs.execute(f'SELECT * FROM user WHERE file_uuid="{id}"').fetchone()
-#     if query:
-#         filename = os.path.splitext(query[DBSCHEMA["name"]])[0] + '.' + query[DBSCHEMA["desiredExtension"]].lower()
-#         dbconn.commit()
-#         dbconn.close()
-#         return send_file('converted/'+filename, as_attachment=True)
-#     else:
-#         dbconn.commit()
-#         dbconn.close()
-#         return '', 404
+@app.route('/download/<id>')
+def download_file(id):
+    """Download the converted file."""
+    print("download link")
+    print(id)
+    outputFile = os.path.join(PATHBASE, f'static/converted/{id}')
+    downloadName = outputFile.split('_')[-1]
+    print("Name: ",downloadName)
+    return send_file(outputFile, as_attachment=True, download_name=downloadName)
 
+
+@app.route('/downloadAll/<id>')
+def download_all(id):
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
+    dbcurs = dbconn.cursor()
+    query = dbcurs.execute(get_user_query(id)).fetchall()
+    dbconn.commit()
+    dbconn.close()
+
+    downloadPath = []
+    for file in query:
+        fstatus = file[DBSCHEMA["status"]]
+        if(fstatus == "Done"):
+            downloadPath.append(os.path.join(PATHBASE, file[DBSCHEMA['processed_path']]))
+    
+    print(downloadPath)
+
+    zip_file_path = os.path.join(PATHBASE, f'static/tmp/{id}')
+    with zipfile.ZipFile(zip_file_path, 'w') as zipf:
+        for file_path in downloadPath:
+            zipf.write(file_path, os.path.basename(file_path))
+
+    return send_file(zip_file_path, as_attachment=True)
 
 
 

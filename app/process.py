@@ -4,45 +4,45 @@ import sys, traceback, os, datetime
 import sqlite3
 from dotenv import load_dotenv
 import time
-from yashuNet.src.model.model import UNet
 import torch
+from PIL import Image
+import torchvision.transforms.functional as TF
 
-# Model working
-MODEL_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models')
-model = UNet(3,1)
-model.load_state_dict(torch.load(os.path.join(MODEL_DIR, os.getenv('MODEL_NAME'))))
-
-
-
-DBSCHEMA = {
-    "user_uuid" : 0,
-    "file_uuid" : 1,
-    "name" : 2,
-    "path" : 3,
-    "created_at" : 4,
-    "status" : 5,
-    "processed_path" : 6,
-    "expiry" : 7
-}
+from modelCode.model import UNet
+from utils import testImage, save_mask
+from modelCode.loadModel import model
+from database import DBSCHEMA
 
 load_dotenv()
 
+
+
+PATHBASE = os.path.abspath(os.path.dirname(__file__))
 def process(*file):
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    # Apply model here ##############################
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
 
-    time.sleep(2)    
-    ppath = os.path.join(__file__, f'converted/{file[1]}')
-
-    dbcurs.execute(f"""UPDATE user SET processed_path="{ppath}" WHERE file_uuid="{file[0]}"; """)
+    # TODO: model working to be added here
+    input_file_path = file[2]
+    output_file_path = input_file_path.replace("uploads", 'converted')
+    image = Image.open(input_file_path)
+    tensor = testImage(model, image)
+    mask = TF.to_pil_image(tensor)
+    save_mask(mask, output_file_path)
+    # time.sleep(1) 
+    # TODO: model working to be added here
+    
+    dbcurs.execute(f"""UPDATE user SET processed_path="{output_file_path}" WHERE file_uuid="{file[0]}"; """)
     dbcurs.execute(f"""UPDATE user SET status="Done" WHERE file_uuid="{file[0]}"; """)
 
     dbconn.commit()
     dbconn.close()
+    #################################################
 
 def main():
 
-    dbconn = sqlite3.connect(os.getenv('DATABASE_PATH'))
+    dbconn = sqlite3.connect(os.path.join(PATHBASE, os.getenv('DATABASE_PATH')))
     dbcurs = dbconn.cursor()
 
     query = dbcurs.execute(f'SELECT * FROM user WHERE status="Pending" ORDER BY created_at').fetchall()

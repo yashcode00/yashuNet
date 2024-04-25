@@ -31,6 +31,9 @@ import warnings
 from metrics import *
 from losses import *
 from getTransformations import *
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
 
 ''' set random seeds '''
 seed_val = 312
@@ -47,15 +50,6 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 ## intializing the config
 config = ModelConfig()
-
-def prepare_dataloader(dataset: Dataset):
-    return DataLoader(
-        dataset,
-        # drop_last=False,
-        batch_size=config.batch_size_selfSupervised,
-        shuffle=False,
-        sampler=DistributedSampler(dataset, shuffle=True)
-    )
 
 
 class ContrastiveTrainer():
@@ -76,7 +70,7 @@ class ContrastiveTrainer():
         self.model = self.load_model(self.load_path)
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=config.lr1)
-        self.criterion = ContrastiveLoss()
+        self.criterion = ContrastiveLoss(margin=config.margin)
         self.scaler = None if not torch.cuda.is_available() else torch.cuda.amp.GradScaler() 
 
         ### making directorues to save checkpoints, evaluations etc
@@ -130,6 +124,17 @@ class ContrastiveTrainer():
             logging.info("Models loaded successfully from the saved path.")
 
         return model
+    
+    def get_score(self, train_d, train_y):
+        """
+        suffix _d means distances
+        suffix _y means labels
+        """
+        log_reg = LogisticRegression()
+        log_reg.fit(train_d.numpy().reshape((-1, 1)), train_y.numpy())
+        train_preds = log_reg.predict(train_d.numpy().reshape((-1, 1)))
+        train_acc = accuracy_score(train_preds, train_y)
+        return train_acc
 
     def run_epoch(self, epoch: int):
         if self.gpu_id == 0:
@@ -150,6 +155,9 @@ class ContrastiveTrainer():
             else:
                 batch_iterator = tqdm(self.val_dl, desc=f"Processing Val: Epoch {epoch} on local rank: {self.local_rank}", disable=self.gpu_id != 0)
 
+            # Initialize distances
+            distances = None
+            labels = None
             for images, positives, negatives  in batch_iterator:
                 images = images.to(self.gpu_id)
                 positives = positives.to(self.gpu_id)
@@ -160,34 +168,49 @@ class ContrastiveTrainer():
                         anchor = self.model.module.forward(images)
                         y_true = self.model.module.forward(positives)
                         y_false = self.model.module.forward(negatives)
-                        loss = self.loss_fn(anchor, y_true, 1) + self.loss_fn(anchor, y_false, 0)
+                        loss1, d1 = self.criterion(anchor, y_true, 1)
+                        loss2, d2 = self.criterion(anchor, y_false, 0)
+                        loss = loss1 + loss2
 
                 elif phase=="train":
                     # backward + optimize only if in training phase
-                    
                     anchor = self.model.module.forward(images)
                     y_true = self.model.module.forward(positives)
                     y_false = self.model.module.forward(negatives)
-                    loss = self.loss_fn(anchor, y_true, 1) + self.loss_fn(anchor, y_false, 0)
+                    loss1, d1 = self.criterion(anchor, y_true, 1)
+                    loss2, d2 = self.criterion(anchor, y_false, 0)
+                    loss = loss1 + loss2
 
                     self.optimizer.zero_grad()  # Zero gradients
                     self.scaler.scale(loss).backward()
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
 
-                running_loss += loss.item() * 0.5
+                ## concat the distance and labels
+                # Concatenate distances
+                if distances is None:
+                    distances = torch.cat([d1.detach().cpu(), d2.detach().cpu()], dim=0)
+                    labels = torch.tensor([1] * len(d1) + [0] * len(d2))
+
+                else:
+                    distances = torch.cat([distances, d1.detach().cpu(), d2.detach().cpu()], dim=0)
+                    labels = torch.cat([labels, torch.tensor([1] * len(d1) + [0] * len(d2))], dim=0)
+
+                # running_loss += loss.item() * 0.5
 
             # metrics = self.calculate_scores(pred, gts, phase)
             metrics = {}
-            # Calculate mean loss after the epoch
-            if phase == 'train':
-                mean_loss = running_loss / len(self.train_dl)
-            else:
-                mean_loss = running_loss / len(self.val_dl)
-            metrics[f"{phase}_loss"]  = mean_loss
+            acc =  self.get_score(distances, labels)
+            metrics[f'{phase}_accuracy'] =acc
+            # # Calculate mean loss after the epoch
+            # if phase == 'train':
+            #     mean_loss = running_loss / len(self.train_dl)
+            # else:
+            #     mean_loss = running_loss / len(self.val_dl)
+            # metrics[f"{phase}_loss"]  = mean_loss
 
             # update tqdm loop
-            batch_iterator.set_postfix(loss=mean_loss)
+            # batch_iterator.set_postfix(loss=mean_loss)
 
             # Print combined training and validation stats
             if self.gpu_id == 0:
@@ -202,7 +225,7 @@ class ContrastiveTrainer():
                     logging.error("Not able to log to wandb, ", err)
 
                 logging.info("*******")
-                logging.info('(GPU {}) {} Loss {:.5f}'.format(self.gpu_id , phase, mean_loss))
+                logging.info(f'(GPU {self.gpu_id}) {phase}  Accuracy: {acc}')
 
     def train(self):
         logging.info("Starting the self-supervised training!")
@@ -218,6 +241,15 @@ class ContrastiveTrainer():
 
     def run(self):
         self.train()
+
+def prepare_dataloader(dataset: Dataset):
+    return DataLoader(
+        dataset,
+        drop_last=False,
+        batch_size=config.batch_size_selfSupervised,
+        shuffle=False,
+        sampler=DistributedSampler(dataset, shuffle=True)
+    )
 
 def main():
     global saved_dataset_path, num_indices, batch_size
@@ -236,7 +268,7 @@ def main():
     val_dataloader = prepare_dataloader(val_dataset)
     print(f"Length of datasets: \n train: {len(train_dataloader)} \n val: {len(val_dataloader)}")
 
-    model = ContrastiveSiameseUNet(n_channels=3, bilinear=False, lr = config.lr)
+    model = ContrastiveTrainer(train_dataloader, val_dataloader)
     model.run()
     return
 
