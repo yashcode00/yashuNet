@@ -1,0 +1,44 @@
+{% extends 'base.html' %} {% block head_additions %}
+<!-- Dygraph CSS -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.css" integrity="sha384-T0vx1F0fMzb57U9DIPej4aJchYkkQt4rApqgqA0me1sjUIdjRcvM/iEgU/MbCaV5" crossorigin="anonymous" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dygraph/2.1.0/dygraph.min.js" crossorigin="anonymous" integrity="sha384-Siw62Hkn0S0jBTE5nHbjlPvg2soIqKgOnp4qUW49Pz5sOjEOue5d6NzCydyTsd2n" defer></script>
+
+<link href="/static/display.css" rel="stylesheet" />
+<script type="application/javascript" src="/static/display.js" defer></script>
+{% endblock %} {% block content %}
+<div class="h-100 d-flex flex align-items-center position-relative px-4" id="downloadContainer">
+    
+    <!-- <div class="container-fluid py-5">
+            <div class="col-sm-6 col-md-4 col-lg-2 mx-auto">
+            <button type="button" class="btn btn-primary btn-lg" onclick="downloadAll()">Download All</button>
+        </div>
+        
+        <div class="my-3">
+            <table class="table w-100">
+                <thead></thead>
+                <tbody id="convertedFiles"></tbody>
+            </table>
+        </div>
+    </div> -->
+    <div class="result-div">
+        <div>
+            <div class="showcase">
+                
+            </div>
+        </div>
+        <div class="download-div">
+            <div class="pagination">
+                <ul> <!--pages or li are comes from javascript --> 
+                </ul>
+            </div>
+            <div>
+                <button class="btn btn-primary dwn-btn" onclick="downloadFile(this)">Download</button>
+            </div>
+            <div>
+                <button class="btn btn-primary dwn-btn-all" onclick="downloadAllFiles(this)">Download All</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

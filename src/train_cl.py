@@ -29,6 +29,7 @@ import pickle
 from data import *
 import warnings
 from metrics import *
+from losses import *
 from getTransformations import *
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
