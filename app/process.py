@@ -3,8 +3,6 @@ from multiprocessing.process import current_process
 import sys, traceback, os, datetime
 import sqlite3
 from dotenv import load_dotenv
-import time
-import torch
 from PIL import Image
 import torchvision.transforms.functional as TF
 
