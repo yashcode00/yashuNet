@@ -1,6 +1,5 @@
-from multiprocessing import Pool,cpu_count
-from multiprocessing.process import current_process
-import sys, traceback, os, datetime
+from multiprocessing import Pool
+import  os
 import sqlite3
 from dotenv import load_dotenv
 from PIL import Image

@@ -24,7 +24,7 @@ DBSCHEMA = {
 }
 
 INSERT_QUERY = """
-            INSERT INTO user(user_uuid,file_uuid,name,path,expiry) VALUES (?,?,?,?,?) 
+            INSERT INTO user(user_uuid,file_uuid,name,path, expiry) VALUES (?,?,?,?,?) 
             """
 
 def get_user_query(id):
