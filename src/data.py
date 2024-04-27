@@ -34,7 +34,6 @@ class Histology(Dataset):
             mask_path = os.path.join(self.mask_dir, self.images[index])
             mask = np.array(Image.open(mask_path).convert('L'), dtype=np.float32)
             mask[mask == 255.0] = 1.0
-
         if self.transform is not None:
             if self.mask_dir is not None:
                 augmentations = self.transform(image=image, mask=mask)
@@ -189,3 +188,29 @@ class DataLoader_ROT(object):
 
     def __len__(self):
         return int(self.epoch_size / self.batch_size)
+
+
+"""Dataset for k-fold cross vallidation"""
+class Histology_crossValidation(Dataset):
+    def __init__(self, image_path_list, mask_path_list, transform=None):
+        self.mask_path_list = mask_path_list
+        self.transform = transform
+        self.images = image_path_list
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        img_path = self.images[index]
+        mask_path = self.mask_path_list[index]
+#         print(f"paths: {img_path} and {mask_path}")
+        image = np.array(Image.open(img_path).convert('RGB'))
+        mask = np.array(Image.open(mask_path).convert('L'), dtype=np.float32)
+        mask[mask == 255.0] = 1.0
+
+        if self.transform is not None:
+            augmentations = self.transform(image=image, mask=mask)
+            image = augmentations['image']
+            mask = augmentations['mask']
+
+        return image, mask

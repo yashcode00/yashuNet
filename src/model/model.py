@@ -6,8 +6,8 @@ from torch import optim
 import sys
 sys.path.append("/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/src/model")
 from unet_parts import *
-
-
+from tqdm import tqdm
+import numpy as np
 
 """This is the main Unet model used for segmentation"""
 class UNet(nn.Module):
@@ -140,4 +140,3 @@ class ContrastiveSiameseUNet(nn.Module):
 #     print(preds.shape)
 
 # test()
-

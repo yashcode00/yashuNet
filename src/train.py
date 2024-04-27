@@ -31,6 +31,7 @@ import warnings
 from metrics import *
 from getTransformations import *
 from plot import plot
+from loss import *
 
 ''' set random seeds '''
 seed_val = 312
@@ -46,7 +47,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 ##################################################################################################
 
 ## intializing the config
-config = ModelConfig()
+config = ModelConfig_afterPretext()
 
 class ImageSegmenter:
     def __init__(self,train_dl:  DataLoader, val_dl: DataLoader) -> None:
@@ -93,8 +94,8 @@ class ImageSegmenter:
         ### making output save folders 
         if self.gpu_id == 0: 
             self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.wandb_run_name = f"final-HistologySegmentation_{self.timestamp}"
-            self.save_model_path = f"final-HistologySegmentation_{self.timestamp}"
+            self.wandb_run_name = f"CL-final-HistologySegmentation_{self.timestamp}"
+            self.save_model_path = f"CL-final-HistologySegmentation_{self.timestamp}"
             self.root = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/"
             self.save_model_path = os.path.join(self.root,self.save_model_path)
             self.pth_path = f"{self.save_model_path}/pthFiles"
@@ -138,7 +139,7 @@ class ImageSegmenter:
             state_dict = snapshot["model"]
             if config.layers_to_exclude is not None:
                 logging.info(f"Found some layers to exclude from preload operation {config.layers_to_exclude}")
-                state_dict = {k: v for k, v in state_dict.items() if k not in config.layers_to_exclude}
+                state_dict = {k: v for k, v in state_dict.items() if k not in config.layers_to_exclude} ## not needed  in eval
 
             u, v = model.module.load_state_dict(state_dict, strict=False)
             logging.info(f"Missing keys: {u} \n Extra keys: {v}")
