@@ -51,7 +51,7 @@ from metrics import *
 from getTransformations import *
 from plot import plot
 from loss import *
-from torch.utils.data import ConcatDataset
+
 
 
 class Config:
@@ -60,8 +60,8 @@ class Config:
         self.epochs = 500
         self.noise_steps = 1000
         self.seed = 42
-        self.batch_size = 32
-        self.img_size = 256
+        self.batch_size = 256
+        self.img_size = 32
         self.num_classes = 10
         self.dataset_path = ""
         self.train_folder = "train"
@@ -162,7 +162,7 @@ def main():
     # Define normalization parameters using ImageNet statistics
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225])
-    IMAGE_SHAPE = config.img_size
+    IMAGE_SHAPE = (256,256)
 
     # Define new transformation pipelines
     train_tffs = transforms.Compose([
@@ -196,9 +196,11 @@ def main():
 
     print(f"Length of datasets: \n train: {len(data_loader)}")
     
-    model = Diffusion(noise_steps=config.noise_steps, img_size=config.img_size, num_classes=config.num_classes)
+    model = StableDiffusion(noise_steps=config.noise_steps, 
+                              img_size=config.img_size,
+                               num_classes=config.num_classes,
+                               vae_path = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/diffusion/VAE_animal_20240427_052528/pthFiles/model_epoch_5")
     ## train
-
     model.prepare(data_loader, config)
     model.fit(config)
     return

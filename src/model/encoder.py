@@ -1,7 +1,9 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from .decoder import AttentionBlock, ResidualBlock
+import sys
+sys.path.append("/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/src/model")
+from decoder import AttentionBlock, ResidualBlock
 
 
 class Encoder(nn.Sequential):

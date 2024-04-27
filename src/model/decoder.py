@@ -1,7 +1,9 @@
 import torch
 from torch import nn
 from torch.nn import functional as F
-from .attention import SelfAttention
+import sys
+sys.path.append("/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/src/model")
+from attention import SelfAttention
 
 
 class AttentionBlock(nn.Module):
