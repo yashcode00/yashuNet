@@ -33,6 +33,7 @@ from metrics import *
 from getTransformations import *
 from model.encoder import *
 from model.decoder import *
+from plot import vae_plot_reconstructed_images
 
 ''' set random seeds '''
 seed_val = 312
@@ -54,11 +55,11 @@ class VAE(nn.Module):
         self.decoder = Decoder()
 
     def forward(self,x, noise):
-        print(f"input: {x.shape}")
+        # print(f"input: {x.shape}")
         x = self.encoder(x, noise)
-        print(f"From encoder: {x.shape}")
-        x = self.decoder()
-        print(f"From decoder: {x.shape}")
+        # print(f"From encoder: {x.shape}")
+        x = self.decoder(x)
+        # print(f"From decoder: {x.shape}")
         return x
 
 class Autoencoder:
@@ -71,7 +72,7 @@ class Autoencoder:
 
         assert self.local_rank != -1, "LOCAL_RANK environment variable not set"
         assert self.gpu_id != -1, "RANK environment variable not set"
-        self.n_epochs = 1
+        self.n_epochs = 200
 
         ## intializing all the models now
         ## load from chekp path
@@ -151,7 +152,7 @@ class Autoencoder:
     def run_epoch(self, epoch: int):
         if self.gpu_id == 0:
             logging.info(f"Epoch: {epoch}")
-        for phase in ['train', 'val']:
+        for phase in ['train']:
             if phase == 'train':
                 logging.info(f"GPU {self.gpu_id}, Training now...")
                 self.model.train()  # Set model to training mode
@@ -170,15 +171,18 @@ class Autoencoder:
             for images, targets  in batch_iterator:
                 images = images.to(self.gpu_id)
                 targets = targets.float().unsqueeze(1).to(self.gpu_id)
+                b, _, h, w = images.shape
+                noise = torch.randn(b, 4, h // 8, w // 8).to(self.gpu_id)
+                assert h%8 == 0 and w%8 ==0
 
                 if phase == "val":
                     with torch.no_grad():
-                        preds = self.model.module.forward(images,torch.randn(*images.shape))
-                        loss = self.loss_fn(preds, targets)
+                        preds = self.model.module.forward(images,noise)
+                        loss = self.loss_fn(preds, images)
                 elif phase=="train":
                     # backward + optimize only if in training phase
-                    preds = self.model.module.forward(images,torch.randn(*images.shape))
-                    loss = self.loss_fn(preds, targets)
+                    preds = self.model.module.forward(images,noise)
+                    loss = self.loss_fn(preds, images)
                     self.optimizer.zero_grad()  # Zero gradients
                     self.scaler.scale(loss).backward()
                     self.scaler.step(self.optimizer)
@@ -231,11 +235,14 @@ class Autoencoder:
         logging.info("Starting the main segmentn training!")
         logging.info("*"*100)
 
-
         for epoch in range(self.n_epochs):
                 self.run_epoch(epoch)
                 if self.gpu_id == 0:
-                    # plot(self.model.module, self.val_dl, self.eval_path, f"{str(epoch)}.png")
+                    path = vae_plot_reconstructed_images(self.model.module, self.train_dl, self.eval_path, f"{str(epoch)}.png")
+                    try:
+                        wandb.log({"reconstructed imagees VAE": wandb.Image(path)})
+                    except:
+                        logging.warning("Cant log images to wandb")
                     # saving the model
                     self.save_model(epoch)
         logging.info("Training complete")
@@ -248,7 +255,7 @@ def prepare_dataloader(dataset: Dataset):
     return DataLoader(
         dataset,
         drop_last=False,
-        batch_size=32,
+        batch_size=12,
         shuffle=False,
         num_workers=4,
         sampler=DistributedSampler(dataset, shuffle=True)

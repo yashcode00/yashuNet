@@ -201,7 +201,7 @@ def main():
 
     print(f"Length of datasets: \n train: {len(data_loader)}")
     
-    model = Diffusion(noise_steps=config.noise_steps, img_size=config.img_size, num_classes=config.num_classes)
+    model = Diffusion(noise_steps=config.noise_steps, img_size=config.img_size, num_classes=config.num_classes,  c_in=1, c_out=1)
     ## train
 
     model.prepare(data_loader, config)

@@ -38,7 +38,7 @@ class Encoder(nn.Sequential):
         log_variance = torch.clamp(log_variance, -30, 20)
         variance = log_variance.exp()
         stdev = variance.sqrt()
-        print(f"shape of stdev: {stdev.shape}, mean: {mean.shape}")
+        # print(f"shape of stdev: {stdev.shape}, mean: {mean.shape}")
         x = mean + stdev * noise
 
         x *= 0.18215

@@ -25,8 +25,6 @@ from datetime import datetime
 from dotenv import load_dotenv
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-
-
 def plot_images(images):
     plt.figure(figsize=(32, 32))
     plt.imshow(torch.cat([
@@ -45,7 +43,7 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s: %(message)s", level=log
 
 
 class Diffusion:
-    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, img_size=32, num_classes=39, c_in=1, c_out=1, **kwargs):
+    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, img_size=256, num_classes=10, c_in=3, c_out=3, **kwargs):
         self.device  = int(os.environ['RANK'])
         self.local_rank = int(os.environ['LOCAL_RANK'])
         logging.info(f"On GPU {self.device} having local rank of {self.local_rank}")
@@ -152,8 +150,9 @@ class Diffusion:
         wandb.log({"ema_sampled_images": [wandb.Image(img.permute(1,2,0).squeeze().cpu().numpy()) for img in ema_sampled_images]})
 
     def load(self, model_cpkt_path, model_ckpt="ckpt.pt", ema_model_ckpt="ema_ckpt.pt"):
-        self.model.load_state_dict(torch.load(os.path.join(model_cpkt_path, model_ckpt)))
-        self.ema_model.load_state_dict(torch.load(os.path.join(model_cpkt_path, ema_model_ckpt)))
+        self.ema_model.load_state_dict(torch.load(model_cpkt_path))
+        # self.model.load_state_dict(torch.load(os.path.join(model_cpkt_path, model_ckpt)))
+        # self.ema_model.load_state_dict(torch.load(os.path.join(model_cpkt_path, ema_model_ckpt)))
 
     def save_model(self, run_name, epoch=-1):
         "Save model locally and on wandb"
