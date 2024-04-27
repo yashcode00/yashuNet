@@ -214,3 +214,22 @@ class Histology_crossValidation(Dataset):
             mask = augmentations['mask']
 
         return image, mask
+
+class Histology_testSet(Dataset):
+    def __init__(self, image_path_list, transform=None):
+        self.transform = transform
+        self.images = image_path_list
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, index):
+        img_path = self.images[index]
+#         print(f"paths: {img_path} and {mask_path}")
+        image = np.array(Image.open(img_path).convert('RGB'))
+
+        if self.transform is not None:
+            augmentations = self.transform(image=image)
+            image = augmentations['image']
+
+        return image, img_path

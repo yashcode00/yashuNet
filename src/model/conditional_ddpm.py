@@ -24,23 +24,9 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from torch.nn.parallel import DistributedDataParallel as DDP
-from encoder import *
-from decoder import *
+from vae import *
 
 
-class VAE(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder = Encoder()
-        self.decoder = Decoder()
-
-    def forward(self,x, noise):
-        # print(f"input: {x.shape}")
-        x = self.encoder(x, noise)
-        # print(f"From encoder: {x.shape}")
-        x = self.decoder(x)
-        # print(f"From decoder: {x.shape}")
-        return x
 
 def plot_images(images):
     plt.figure(figsize=(32, 32))
@@ -243,7 +229,7 @@ class Diffusion:
 
 
 class StableDiffusion:
-    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, img_size=256, num_classes=10, c_in=4, c_out=4, vae_path:str=None,**kwargs):
+    def __init__(self, noise_steps=1000, beta_start=1e-4, beta_end=0.02, img_size=256, num_classes=10, c_in=64, c_out=64, vae_path:str=None,**kwargs):
         self.device  = int(os.environ['RANK'])
         self.local_rank = int(os.environ['LOCAL_RANK'])
         logging.info(f"On GPU {self.device} having local rank of {self.local_rank}")
@@ -316,7 +302,7 @@ class StableDiffusion:
                     noise = torch.zeros_like(x)
                 x = 1 / torch.sqrt(alpha) * (x - ((1 - alpha) / (torch.sqrt(1 - alpha_hat))) * predicted_noise) + torch.sqrt(beta) * noise
         x = (x.clamp(-1, 1) + 1) / 2
-        ## decode these images into original 3 dimension from [N, 4,32,32] -> [N,3, 256,256]
+        ## decode these images into original 3 dimension from [N, 256,20,20] -> [N,3, 448,448]
         x = self.vae.module.decoder(x)
         x = (x * 255).type(torch.uint8)
         return x
@@ -337,13 +323,9 @@ class StableDiffusion:
         for i, (images, labels) in enumerate(pbar):
             with torch.autocast("cuda") and (torch.inference_mode() if not train else torch.enable_grad()):
                 images = images.to(self.device)
-                ## encode the image to latend dimensoion of [N,4,32,32]
-                b, _, h, w = images.shape
-                noise = torch.randn(b, 4, h // 8, w // 8).to(self.device)
-                assert h%8 == 0 and w%8 ==0
+                ## encode the image to latend dimensoion of [N,256,20,20]
                 print(f"Image shape before vae: {images.shape}")
-
-                images = self.vae.module.encoder(images,noise)
+                images, _, _ = self.vae.module.encoder(images)
                 print(f"Image shape afte vae: {images.shape}")
 
                 labels = labels.to(self.device)

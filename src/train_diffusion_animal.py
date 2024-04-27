@@ -56,12 +56,12 @@ from loss import *
 
 class Config:
     def __init__(self):
-        self.run_name = "DDPM_conditional_animals"
-        self.epochs = 500
+        self.run_name = "DDPM_conditional_animals-new-vae"
+        self.epochs = 1000
         self.noise_steps = 1000
         self.seed = 42
-        self.batch_size = 256
-        self.img_size = 32
+        self.batch_size = 64
+        self.img_size = 32   ## torch.Size([16, 64, 32, 32])
         self.num_classes = 10
         self.dataset_path = ""
         self.train_folder = "train"
@@ -162,7 +162,7 @@ def main():
     # Define normalization parameters using ImageNet statistics
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                     std=[0.229, 0.224, 0.225])
-    IMAGE_SHAPE = (256,256)
+    IMAGE_SHAPE = (512,512)
 
     # Define new transformation pipelines
     train_tffs = transforms.Compose([
@@ -199,7 +199,12 @@ def main():
     model = StableDiffusion(noise_steps=config.noise_steps, 
                               img_size=config.img_size,
                                num_classes=config.num_classes,
-                               vae_path = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/diffusion/VAE_animal_20240427_052528/pthFiles/model_epoch_5")
+                               vae_path = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/diffusion/VAE_animal_20240427_173418/pthFiles/model_epoch_5",
+                               c_in = 64, c_out = 64)
+    # model = Diffusion(noise_steps=config.noise_steps, 
+    #                           img_size=config.img_size,
+    #                            num_classes=config.num_classes,
+    #                           )
     ## train
     model.prepare(data_loader, config)
     model.fit(config)

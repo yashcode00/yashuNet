@@ -31,8 +31,7 @@ from data import *
 import warnings
 from metrics import *
 from getTransformations import *
-from model.encoder import *
-from model.decoder import *
+from model.vae import *
 from plot import vae_plot_reconstructed_images
 
 ''' set random seeds '''
@@ -47,20 +46,6 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 ##################################################################################################
 ## Important Intializations
 ##################################################################################################
-
-class VAE(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.encoder = Encoder()
-        self.decoder = Decoder()
-
-    def forward(self,x, noise):
-        # print(f"input: {x.shape}")
-        x = self.encoder(x, noise)
-        # print(f"From encoder: {x.shape}")
-        x = self.decoder(x)
-        # print(f"From decoder: {x.shape}")
-        return x
 
 class Autoencoder:
     def __init__(self,train_dl:  DataLoader) -> None:

@@ -31,6 +31,7 @@ import warnings
 from metrics import *
 from getTransformations import *
 from plot import plot
+import cv2
 
 ''' set random seeds '''
 seed_val = 312
@@ -50,9 +51,12 @@ config = ModelConfig()
 device = "cuda"
 
 model = UNet(3,1).to(device)
-path = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/HistologySegmentation_20240423_025436/pthFiles/model_epoch_11"
+# path = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/best-yash-model-ps2.pt"
+path = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/models/supmodel_23.pth"
 snapshot = torch.load(path)
-u, v = model.load_state_dict(snapshot["model"], strict=False)
+# u, v = model.load_state_dict(snapshot["model"], strict=False)
+u, v = model.load_state_dict(snapshot, strict=False)
+
 logging.info(f"Missing keys: {u} \n Extra keys: {v}")
 logging.info("Models loaded successfully from the saved path.")
 
@@ -70,7 +74,7 @@ def prepare_dataloader(dataset: Dataset):
 assert torch.cuda.is_available(), "Training on CPU is not supported"
 
 ## LOADING THE DATASETS UNLABELLED FOR SELF SUPERVISED LEARNING
-train_tfms, val_tfms = get_transforms(self_supervised=True)
+train_tfms, val_tfms = get_transforms()
 
 # Create dataset instance
 train_dataset = Histology(config.paths["labelled"]["train_images"],mask_dir=config.paths["labelled"]["train_masks"],  transform=train_tfms)
@@ -88,3 +92,44 @@ out = compute_metric(val_dataloader, model)
 print(f"For val data: \n{out}")
 
 print("Done evaluaton")
+
+print(f"Savimng masks for test data now")
+
+test_path = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/datasets/HistologyNet-testData/images"
+
+path_list = sorted([os.path.join(test_path,f) for f in os.listdir(test_path)])
+test_dataset = Histology_testSet(path_list, val_tfms)
+
+# Define a DataLoader for the test dataset
+batch_size = 64  # Set batch size to 1 for inference
+test_dl = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, drop_last=False)
+
+# Set the model to evaluation mode
+model.eval()
+
+# Define the directory to save the predicted masks
+save_dir = "/nlsasfs/home/nltm-st/sujitk/temp/yashuNet/datasets/Histology-predicted-masks"
+
+# Create the directory if it doesn't exist
+os.makedirs(save_dir, exist_ok=True)
+
+# Iterate over the test dataset and save predicted masks
+for i, (x, img_paths) in enumerate(test_dl):
+    with torch.no_grad():
+        x = x.to(device)  # Assuming device is already defined
+        preds = torch.sigmoid(model(x))
+        preds = (preds > 0.5).float()
+        
+        # Extract the image file name from the path tuple
+        file_names = [os.path.basename(path).split(".")[0] for path in img_paths]
+
+        # Convert the predicted mask to numpy array
+        masks = preds.squeeze().cpu().numpy() * 255
+
+        # Save each mask with its corresponding file name
+        for i in range(len(file_names)):
+            file_name = file_names[i]
+            mask = masks[i]
+            cv2.imwrite(os.path.join(save_dir, f"{file_name}.png"), mask.astype('uint8'))
+
+print("Predicted masks saved successfully.")

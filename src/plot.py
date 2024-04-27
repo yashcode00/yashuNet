@@ -197,3 +197,25 @@ def vae_plot_reconstructed_images(model, val_dl, dir, name, n=20):
             break
 
     return vae_plot(original_images, reconstructed_images, dir, name)
+
+
+def vae_plot_reconstructed_images2(model, val_dl, dir, name, n=20):
+    model.eval()
+    original_images = []
+    reconstructed_images = []
+    device = next(model.parameters()).device  # Get the device of the model's parameters
+
+    for x, _ in val_dl:
+        with torch.no_grad():
+            x = x.float().to(device)
+            reconstructed, _, _ = model(x)
+        
+            original_images.extend(x.cpu())  # Collect original images
+            reconstructed_images.extend(reconstructed.cpu())  # Collect reconstructed images
+        
+        if len(original_images) >= n:
+            original_images = original_images[:n]
+            reconstructed_images = reconstructed_images[:n]
+            break
+
+    return vae_plot(original_images, reconstructed_images, dir, name)
