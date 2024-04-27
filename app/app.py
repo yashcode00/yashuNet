@@ -1,4 +1,4 @@
-from flask import Flask, flash, jsonify, request,send_file, redirect, url_for, redirect, render_template, send_from_directory
+from flask import Flask, flash, jsonify, request,send_file, redirect, url_for, redirect, render_template
 from dotenv import load_dotenv
 import os
 import threading
@@ -91,7 +91,6 @@ except sqlite3.OperationalError :
 def landing_page():
     """Home page. User can upload files from here"""
     return render_template('landing.html')
-    
 
 @app.route('/upload', methods=['POST','GET'])
 def upload_page():
